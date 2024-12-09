@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎥 YouTube Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 min-h-screen flex justify-center items-center">
+
+    <div class="bg-white p-8 rounded-lg shadow-2xl max-w-lg w-full transform transition hover:scale-105">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">
+            🎥 YouTube Downloader 🚀
+        </h1>
+
+        <div>
+            <label for="urlInput" class="block text-lg text-gray-700">🔗 Paste YouTube URL</label>
+            <input id="urlInput" type="text" class="w-full p-2 mt-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400" placeholder="Enter YouTube link here...">
+        </div>
+
+        <!-- Quality Selector -->
+        <div class="mt-4">
+            <label for="qualitySelect" class="block text-lg text-gray-700">⚙️ Select Quality</label>
+            <select id="qualitySelect" class="w-full p-2 mt-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400">
+                <option value="">Auto (Best Quality)</option>
+            </select>
+        </div>
+
+        <!-- Download Buttons -->
+        <div class="mt-6 grid grid-cols-1 gap-4">
+            <button id="downloadBtn" class="bg-blue-500 text-white p-3 rounded-lg shadow-md hover:bg-blue-600 transition-all ease-in-out">
+                📥 Download Video + Audio
+            </button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progressBar" class="hidden mt-6">
+            <p class="text-center text-lg text-gray-700">Downloading...</p>
+            <div class="h-2 bg-gray-300 rounded-full mt-2">
+                <div id="progress" class="progress-bar h-2 bg-blue-500 rounded-full" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden mt-4 text-red-600 text-center font-bold">
+            ⚠️ Something went wrong! Please try again.
+        </div>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const qualitySelect = document.getElementById('qualitySelect');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progress = document.getElementById('progress');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Fetch quality options dynamically
+        urlInput.addEventListener('blur', async () => {
+            const url = urlInput.value;
+            if (!url) return;
+
+            try {
+                const response = await fetch(`/api/get_formats`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url }),
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    qualitySelect.innerHTML = `<option value="">Auto (Best Quality)</option>`;
+                    data.formats.forEach(format => {
+                        qualitySelect.innerHTML += `<option value="${format.format_id}">${format.format_note} (${format.ext})</option>`;
+                    });
+                } else {
+                    console.error(data.message);
+                }
+            } catch (error) {
+                console.error('Error fetching formats:', error);
+            }
+        });
+
+        downloadBtn.addEventListener('click', async () => {
+            const url = urlInput.value;
+            const quality = qualitySelect.value;
+
+            if (!url) {
+                errorMessage.textContent = '⚠️ Please enter a valid URL!';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+            errorMessage.classList.add('hidden');
+
+            progressBar.classList.remove('hidden');
+            progress.style.width = '0%';
+
+            try {
+                const response = await fetch(`/api/download`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url, quality }),
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    progress.style.width = '100%';
+                    alert('✅ Download Completed!');
+
+                    // Display download link
+                    const linkContainer = document.createElement('div');
+                    linkContainer.innerHTML = `
+                        <p class="text-center text-lg text-gray-700">Download your file:</p>
+                        <a href="${data.download_link}" class="text-blue-500 underline">📥 Click here to download</a>
+                    `;
+                    document.body.appendChild(linkContainer);
+                } else {
+                    errorMessage.textContent = `⚠️ ${data.message}`;
+                    errorMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorMessage.textContent = '⚠️ Error during download. Please try again!';
+                errorMessage.classList.remove('hidden');
+            } finally {
+                progressBar.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+  </html>
+  
